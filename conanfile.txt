@@ -1,6 +1,6 @@
 [requires]
-fmt/10.1.1
-spdlog/1.12.0
+fmt/11.2.0
+spdlog/1.15.3
 
 [generators]
 CMakeDeps
@@ -8,3 +8,6 @@ CMakeToolchain
 
 [options]
 spdlog/*:shared=False
+
+[layout]
+cmake_layout
