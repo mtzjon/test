@@ -27,6 +27,18 @@ RUN conan profile detect --force
 # Development stage
 FROM base AS development
 
+# Install development and code quality tools
+RUN apt-get update && apt-get install -y \
+    gdb \
+    valgrind \
+    clang-format \
+    clang-tidy \
+    doxygen \
+    graphviz \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
 # Set working directory
 WORKDIR /app
 
