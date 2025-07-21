@@ -167,15 +167,32 @@ run_lint() {
         cmake ..
     fi
     
-    # Run clang-tidy
-    clang-tidy \
-        --config-file="$PROJECT_ROOT/.clang-tidy" \
-        --header-filter='(src|include)/.*\.h(pp)?$' \
-        $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
-            -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp") \
-        -- \
-        -I"$PROJECT_ROOT/include" \
-        -std=c++17
+    # Build to ensure compilation database is complete
+    if [ ! -f "compile_commands.json" ]; then
+        echo -e "${YELLOW}Building project to generate compilation database...${NC}"
+        cmake --build . || echo -e "${YELLOW}Build failed, continuing with analysis...${NC}"
+    fi
+    
+    # Run clang-tidy with compilation database
+    if [ -f "compile_commands.json" ]; then
+        clang-tidy \
+            --config-file="$PROJECT_ROOT/.clang-tidy" \
+            --header-filter='(src|include)/.*\.h(pp)?$' \
+            -p="$BUILD_DIR" \
+            $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
+                -name "*.cpp" -o -name "*.h" -o -name "*.hpp")
+    else
+        echo -e "${YELLOW}No compilation database found, running with basic configuration...${NC}"
+        clang-tidy \
+            --config-file="$PROJECT_ROOT/.clang-tidy" \
+            --header-filter='(src|include)/.*\.h(pp)?$' \
+            $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
+                -name "*.cpp" -o -name "*.h" -o -name "*.hpp") \
+            -- \
+            -I"$PROJECT_ROOT/include" \
+            -std=c++17 \
+            -x c++
+    fi
     
     echo -e "${GREEN}Static analysis completed!${NC}"
 }
@@ -197,16 +214,34 @@ run_lint_fix() {
         cmake ..
     fi
     
-    # Run clang-tidy with fixes
-    clang-tidy \
-        --config-file="$PROJECT_ROOT/.clang-tidy" \
-        --header-filter='(src|include)/.*\.h(pp)?$' \
-        --fix \
-        $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
-            -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp") \
-        -- \
-        -I"$PROJECT_ROOT/include" \
-        -std=c++17
+    # Build to ensure compilation database is complete
+    if [ ! -f "compile_commands.json" ]; then
+        echo -e "${YELLOW}Building project to generate compilation database...${NC}"
+        cmake --build . || echo -e "${YELLOW}Build failed, continuing with fixes...${NC}"
+    fi
+    
+    # Run clang-tidy with fixes and compilation database
+    if [ -f "compile_commands.json" ]; then
+        clang-tidy \
+            --config-file="$PROJECT_ROOT/.clang-tidy" \
+            --header-filter='(src|include)/.*\.h(pp)?$' \
+            -p="$BUILD_DIR" \
+            --fix \
+            $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
+                -name "*.cpp" -o -name "*.h" -o -name "*.hpp")
+    else
+        echo -e "${YELLOW}No compilation database found, running with basic configuration...${NC}"
+        clang-tidy \
+            --config-file="$PROJECT_ROOT/.clang-tidy" \
+            --header-filter='(src|include)/.*\.h(pp)?$' \
+            --fix \
+            $(find "$PROJECT_ROOT/src" "$PROJECT_ROOT/include" \
+                -name "*.cpp" -o -name "*.h" -o -name "*.hpp") \
+            -- \
+            -I"$PROJECT_ROOT/include" \
+            -std=c++17 \
+            -x c++
+    fi
     
     echo -e "${GREEN}Automatic fixes applied!${NC}"
 }

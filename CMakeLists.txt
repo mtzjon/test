@@ -3,6 +3,7 @@ project(cpp-docker-app VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # =============================================================================
 # Find Dependencies
@@ -84,10 +85,8 @@ if(CLANG_TIDY_EXECUTABLE)
         COMMAND ${CLANG_TIDY_EXECUTABLE} 
             --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             --header-filter='(src|include)/.*\.h(pp)?$'
+            -p=${CMAKE_BINARY_DIR}
             ${ALL_SOURCE_FILES}
-            -- 
-            -I${CMAKE_SOURCE_DIR}/include
-            -std=c++17
         COMMENT "Running clang-tidy analysis"
         VERBATIM
     )
@@ -96,11 +95,9 @@ if(CLANG_TIDY_EXECUTABLE)
         COMMAND ${CLANG_TIDY_EXECUTABLE} 
             --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             --header-filter='(src|include)/.*\.h(pp)?$'
+            -p=${CMAKE_BINARY_DIR}
             --fix
             ${ALL_SOURCE_FILES}
-            -- 
-            -I${CMAKE_SOURCE_DIR}/include
-            -std=c++17
         COMMENT "Running clang-tidy with automatic fixes"
         VERBATIM
     )

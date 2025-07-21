@@ -58,6 +58,10 @@ jobs:
       run: |
         cmake --preset default
     
+    - name: Build project for compilation database
+      run: |
+        cmake --build build
+    
     - name: Check code formatting
       run: |
         echo "::group::Code Formatting Check"
