@@ -44,7 +44,7 @@ void App::run() {
     
     // Demo some functionality with formatted output
     for (int i = 1; i <= 5; ++i) {
-        auto message = fmt::format("Processing item #{}", i);
+        const auto message = fmt::format("Processing item #{}", i);
         spdlog::info(message);
     }
     
@@ -53,7 +53,7 @@ void App::run() {
 
 void App::greet(const std::string& name) {
     // Use fmt library for string formatting
-    auto greeting = fmt::format("Hello, {}!", name);
+    const auto greeting = fmt::format("Hello, {}!", name);
     
     // Log the greeting using spdlog
     spdlog::info(greeting);
