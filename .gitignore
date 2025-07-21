@@ -39,3 +39,57 @@
 
 # debug information files
 *.dwo
+
+# Build directories
+build/
+cmake-build-*/
+bin/
+lib/
+
+# Conan
+.conan/
+conandata.yml
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.user
+*.vcxproj.user
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+
+# Environment
+.env
+.env.local
+.env.*.local
