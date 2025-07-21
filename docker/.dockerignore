@@ -1,0 +1,75 @@
+# Git files and directories
+.git
+.gitignore
+.gitattributes
+
+# Build directories
+build/
+cmake-build-*/
+Debug/
+Release/
+x64/
+out/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vs/
+*.vcxproj.user
+*.suo
+*.user
+
+# Documentation and README files
+README.md
+LICENSE
+*.md
+docs/
+
+# Conan cache and temporary files
+.conan/
+.conan2/
+conan.lock
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+*.bak
+*.orig
+
+# Docker files themselves (when building from project root)
+docker/
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Test and coverage files
+test/
+tests/
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Package manager files
+node_modules/
+*.lock
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
