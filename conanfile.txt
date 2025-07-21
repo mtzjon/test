@@ -8,6 +8,3 @@ CMakeToolchain
 
 [options]
 spdlog/*:shared=False
-
-[layout]
-cmake_layout
