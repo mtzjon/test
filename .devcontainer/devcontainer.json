@@ -1,0 +1,49 @@
+{
+  "name": "C++ Development Environment",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-themes",
+        "jeff-hykin.better-cpp-syntax",
+        "ms-python.python",
+        "formulahendry.code-runner",
+        "vadimcn.vscode-lldb",
+        "github.copilot"
+      ],
+      "settings": {
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "cmake.configureOnOpen": true,
+        "cmake.buildBeforeRun": true,
+        "cmake.configureSettings": {
+          "CMAKE_TOOLCHAIN_FILE": "${workspaceFolder}/build/conan_toolchain.cmake",
+          "CMAKE_BUILD_TYPE": "Debug"
+        },
+        "files.associations": {
+          "*.h": "cpp",
+          "*.hpp": "cpp",
+          "*.cpp": "cpp",
+          "*.cc": "cpp",
+          "*.cxx": "cpp"
+        },
+        "editor.formatOnSave": true,
+        "C_Cpp.formatting": "clangFormat",
+        "C_Cpp.clang_format_style": "Google"
+      }
+    }
+  },
+  "forwardPorts": [],
+  "postCreateCommand": "conan install . --output-folder=build --build=missing && cmake --preset default",
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  }
+}
