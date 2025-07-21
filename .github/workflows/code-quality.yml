@@ -1,0 +1,257 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache build dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.conan2
+          build/
+        key: ${{ runner.os }}-build-${{ hashFiles('conanfile.txt', 'CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          cmake \
+          ninja-build \
+          gcc \
+          g++ \
+          python3 \
+          python3-pip \
+          clang-format \
+          clang-tidy \
+          doxygen \
+          graphviz
+    
+    - name: Install Conan
+      run: |
+        pip3 install --user conan
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    
+    - name: Configure Conan
+      run: |
+        conan profile detect --force
+    
+    - name: Install Conan dependencies
+      run: |
+        conan install . --output-folder=build --build=missing
+    
+    - name: Configure CMake
+      run: |
+        cmake --preset default
+    
+    - name: Check code formatting
+      run: |
+        echo "::group::Code Formatting Check"
+        ./scripts/code-quality.sh format-check
+        echo "::endgroup::"
+    
+    - name: Run static analysis
+      run: |
+        echo "::group::Static Analysis (clang-tidy)"
+        ./scripts/code-quality.sh lint
+        echo "::endgroup::"
+    
+    - name: Build application
+      run: |
+        echo "::group::Build Application"
+        cmake --build build
+        echo "::endgroup::"
+    
+    - name: Generate documentation
+      run: |
+        echo "::group::Generate Documentation"
+        ./scripts/code-quality.sh docs
+        echo "::endgroup::"
+    
+    - name: Upload documentation
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: build/docs/html/
+        retention-days: 30
+    
+    - name: Run application test
+      run: |
+        echo "::group::Application Test"
+        timeout 10s ./build/cpp-docker-app || [ $? -eq 124 ]
+        echo "::endgroup::"
+
+  docker-quality:
+    name: Docker Quality Checks
+    runs-on: ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build development image
+      run: |
+        docker build \
+          --target development \
+          --tag cpp-app:dev \
+          --cache-from type=gha \
+          --cache-to type=gha,mode=max \
+          .
+    
+    - name: Run code quality in Docker
+      run: |
+        echo "::group::Docker Code Quality"
+        docker run --rm \
+          -v $(pwd):/workspace \
+          -w /workspace \
+          cpp-app:dev \
+          bash -c "
+            set -e
+            echo 'Formatting check...'
+            ./scripts/code-quality.sh format-check
+            echo 'Static analysis...'
+            ./scripts/code-quality.sh lint
+            echo 'Documentation generation...'
+            ./scripts/code-quality.sh docs
+          "
+        echo "::endgroup::"
+    
+    - name: Build production image
+      run: |
+        docker build \
+          --target production \
+          --tag cpp-app:prod \
+          --cache-from type=gha \
+          --cache-to type=gha,mode=max \
+          .
+    
+    - name: Test production image
+      run: |
+        echo "::group::Production Image Test"
+        timeout 10s docker run --rm cpp-app:prod || [ $? -eq 124 ]
+        echo "::endgroup::"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  documentation-deploy:
+    name: Deploy Documentation
+    runs-on: ubuntu-22.04
+    needs: code-quality
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y cmake ninja-build gcc g++ python3 python3-pip doxygen graphviz
+        pip3 install --user conan
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    
+    - name: Configure Conan
+      run: conan profile detect --force
+    
+    - name: Install Conan dependencies
+      run: conan install . --output-folder=build --build=missing
+    
+    - name: Configure CMake
+      run: cmake --preset default
+    
+    - name: Generate documentation
+      run: ./scripts/code-quality.sh docs
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+    
+    - name: Upload to GitHub Pages
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: build/docs/html
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
+
+  summary:
+    name: Quality Summary
+    runs-on: ubuntu-22.04
+    needs: [code-quality, docker-quality]
+    if: always()
+    
+    steps:
+    - name: Generate summary
+      run: |
+        echo "## 🔍 Code Quality Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ needs.code-quality.result }}" == "success" ]; then
+          echo "✅ **Code Quality Checks**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Code Quality Checks**: Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [ "${{ needs.docker-quality.result }}" == "success" ]; then
+          echo "✅ **Docker Quality Checks**: Passed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Docker Quality Checks**: Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Checks Performed" >> $GITHUB_STEP_SUMMARY
+        echo "- Code formatting (clang-format)" >> $GITHUB_STEP_SUMMARY
+        echo "- Static analysis (clang-tidy)" >> $GITHUB_STEP_SUMMARY
+        echo "- Documentation generation (Doxygen)" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker builds (development & production)" >> $GITHUB_STEP_SUMMARY
+        echo "- Application execution test" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review any failed checks above" >> $GITHUB_STEP_SUMMARY
+          echo "2. Fix issues locally: \`./scripts/code-quality.sh fix-all\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Push fixes to update this PR" >> $GITHUB_STEP_SUMMARY
+        fi
