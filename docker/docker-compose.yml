@@ -1,0 +1,171 @@
+services:
+  # Production service
+  cpp-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    image: cpp-docker-app:latest
+    container_name: cpp-docker-app-prod
+    restart: unless-stopped
+    
+    # Uncomment and configure ports as needed
+    # ports:
+    #   - "8080:8080"
+    
+    # Environment variables
+    environment:
+      - APP_ENV=production
+      - LOG_LEVEL=info
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Health check configuration
+    healthcheck:
+      test: ["CMD", "./cpp-docker-app", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+    
+    # Uncomment for persistent data
+    # volumes:
+    #   - app-data:/app/data
+    #   - ./config:/app/config:ro
+    
+    # Logging configuration
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Development service with debugging capabilities
+  cpp-app-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: development
+    image: cpp-docker-app:dev
+    container_name: cpp-docker-app-dev
+    
+    # Mount source code for development
+    volumes:
+      - ..:/app
+      - build-cache:/app/build
+    
+    # Development environment variables
+    environment:
+      - APP_ENV=development
+      - LOG_LEVEL=debug
+      - CMAKE_BUILD_TYPE=Debug
+    
+    # Keep container running for interactive development
+    command: tail -f /dev/null
+    stdin_open: true
+    tty: true
+    
+    # Expose debugging ports
+    ports:
+      - "2345:2345"  # GDB remote debugging
+    
+    # Development profile
+    profiles:
+      - dev
+    
+    # Security for development (less restrictive)
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - SYS_PTRACE
+
+  # Testing service
+  cpp-app-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: development
+    image: cpp-docker-app:test
+    container_name: cpp-docker-app-test
+    
+    volumes:
+      - ..:/app
+      - test-cache:/app/build
+    
+    environment:
+      - APP_ENV=test
+      - LOG_LEVEL=debug
+    
+    # Override command for testing
+    command: |
+      bash -c "
+        cd /app/build &&
+        cmake --build . --target test --parallel $(nproc) &&
+        ctest --output-on-failure
+      "
+    
+    profiles:
+      - test
+
+  # Production-like staging environment
+  cpp-app-staging:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    image: cpp-docker-app:staging
+    container_name: cpp-docker-app-staging
+    restart: unless-stopped
+    
+    environment:
+      - APP_ENV=staging
+      - LOG_LEVEL=info
+    
+    # Similar to production but with access to logs
+    volumes:
+      - staging-logs:/app/logs
+    
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+    
+    profiles:
+      - staging
+
+# Named volumes for data persistence
+volumes:
+  app-data:
+    driver: local
+  build-cache:
+    driver: local
+  test-cache:
+    driver: local
+  staging-logs:
+    driver: local
+
+# Custom networks (optional)
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
