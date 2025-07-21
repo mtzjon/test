@@ -82,7 +82,7 @@ jobs:
         echo "::endgroup::"
     
     - name: Upload documentation
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: documentation
         path: build/docs/html/
@@ -112,7 +112,7 @@ jobs:
           --tag cpp-app:dev \
           --cache-from type=gha \
           --cache-to type=gha,mode=max \
-          .
+          ./docker/
     
     - name: Run code quality in Docker
       run: |
@@ -139,7 +139,7 @@ jobs:
           --tag cpp-app:prod \
           --cache-from type=gha \
           --cache-to type=gha,mode=max \
-          .
+          ./docker/
     
     - name: Test production image
       run: |

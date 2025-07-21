@@ -7,7 +7,7 @@ This document provides a quick reference for the code quality tools and document
 ### Configuration Files
 - `.clang-format` - Code formatting configuration
 - `.clang-tidy` - Static analysis configuration
-- `Doxyfile.in` - Doxygen documentation template
+- `Doxyfile` - Doxygen documentation template
 
 ### Scripts
 - `scripts/code-quality.sh` - Comprehensive code quality automation script
